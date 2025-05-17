@@ -1,0 +1,3 @@
+[toolchain]
+channel = "stable"    # or "1.87.0" to pin exactly
+components = ["rustfmt", "clippy"]
