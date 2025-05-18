@@ -5,13 +5,16 @@ edition = "2024"
 
 [dependencies]
 actix-web = "4.11.0"
+chrono = "0.4.41"
+config = "0.15.11"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version =" 1.45.0", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1.16.0", features = ["v4"] }
 
 [dependencies.sqlx]
 version = "0.8.5"
 default-features = false
-features = ["tls-native-tls", "macros", "postgres", "uuid", "chrono", "migrate"]
+features = ["tls-native-tls", "runtime-tokio", "macros", "postgres", "uuid", "chrono", "migrate"]
 
 [lib]
 # We could use any path here, but we are following the community convention
