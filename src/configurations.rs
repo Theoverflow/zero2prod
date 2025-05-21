@@ -1,5 +1,6 @@
 //! src/configuration.rs
 
+use crate::domain::SubscriberEmail;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::{ConnectOptions, postgres::PgConnectOptions, postgres::PgSslMode};
@@ -8,7 +9,9 @@ use sqlx::{ConnectOptions, postgres::PgConnectOptions, postgres::PgSslMode};
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
+    pub email_client: EmailClientSettings,
 }
+
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
@@ -19,6 +22,7 @@ pub struct DatabaseSettings {
     pub database_name: String,
     pub require_ssl: bool,
 }
+
 #[derive(serde::Deserialize)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
@@ -26,11 +30,19 @@ pub struct ApplicationSettings {
     pub host: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub base_url: String,
+    pub sender_email: String,
+    pub authorization_token: SecretBox<String>,
+}
+
 /// The possible runtime environment for our application.
 pub enum Environment {
     Local,
     Production,
 }
+
 impl Environment {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -127,4 +139,8 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     settings.try_deserialize()
 }
 
-
+impl EmailClientSettings {
+    pub fn sender(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender_email.clone())
+    }
+}

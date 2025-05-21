@@ -6,6 +6,7 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tokio::io::Sink;
 use uuid::Uuid;
 use z2p::configurations::{DatabaseSettings, get_configuration};
+use z2p::email_client::EmailClient;
 use z2p::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -38,8 +39,17 @@ async fn spawn_app() -> TestApp {
 
     let mut config = get_configuration().expect("Failed to read configurations");
     config.database.database_name = Uuid::new_v4().to_string();
+    let sender_email = config
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(
+        config.email_client.base_url,
+        sender_email,
+        config.email_client.authorization_token,
+    );
     let connection_pool = configure_db(&config.database).await;
-    let server = z2p::startup::run(listener, connection_pool.clone())
+    let server = z2p::startup::run(listener, connection_pool.clone(), email_client)
         .await
         .expect("Fail to bind address");
     // Launch the server as a background task

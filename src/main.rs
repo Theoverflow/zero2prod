@@ -5,6 +5,7 @@
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use z2p::configurations::get_configuration;
+use z2p::email_client::EmailClient;
 use z2p::startup::run;
 use z2p::telemetry;
 
@@ -25,7 +26,17 @@ async fn main() -> std::io::Result<()> {
 
     // Create a lazy pool with the configured options
     let connection_pool = PgPoolOptions::new().connect_lazy_with(config.database.with_db());
+    // Build an `EmailClient` using `configuration`
+    let sender_email = config
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(
+        config.email_client.base_url,
+        sender_email,
+        config.email_client.authorization_token,
+    );
     let address = format!("{}:{}", config.application.host, config.application.port);
     let listener = TcpListener::bind(address)?;
-    run(listener, connection_pool).await?.await
+    run(listener, connection_pool, email_client).await?.await
 }

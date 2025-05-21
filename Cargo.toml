@@ -48,4 +48,6 @@ name = "zero2prod"
 [dev-dependencies]
 quickcheck = "1.0.3"
 quickcheck_macros = "1.1.0"
+tokio = { version = "1.45.0", features = ["rt", "macros"] }
+wiremock = "0.6.3"
 
