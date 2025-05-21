@@ -1,0 +1,11 @@
+#!configuration/base.yml
+application:
+  port: 8083
+  host: 127.0.0.1
+database:
+  host: "127.0.0.1"
+  port: 5432
+  username: "postgres"
+  password: "password"
+  database_name: "newsletter"
+  

@@ -73,6 +73,27 @@ async fn configure_db(config: &DatabaseSettings) -> PgPool {
     connection_pool
 }
 
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // Create database
+    let mut connection = PgConnection::connect_with(&config.without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database.");
+
+    // Migrate database
+    let connection_pool = PgPool::connect_with(config.with_db())
+        .await
+        .expect("Failed to connect to Postgres.");
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
+    connection_pool
+}
+
 #[tokio::test]
 async fn health_check_works() {
     let app = spawn_app().await;
@@ -137,3 +158,36 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
         );
     }
 }
+
+// #[tokio::test]
+// async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
+//     let app = spawn_app().await;
+//     let client = reqwest::Client::new();
+//     let test_cases = vec![
+//         ("name=le%20guin", "missing the email"),
+//         ("email=ursula_*le_guin%40gmail.com", "missing the name"),
+//         ("", "missing both name and email"),
+//     ];
+
+//     let response = client
+//         .post(format!("{}/subscriptions", &app.address))
+//         .header("Content-Type", "application/x-www-form-urlencoded")
+//         .body(invalid_body)
+//         .send()
+//         .await
+//         .expect("Fail to execute request");
+//     assert_eq!(
+//         400,
+//         response.status().as_u16(),
+//         "The API did not fail with 400 Bad Request when the payload was {}.",
+//         error_message
+//     );
+
+//     assert_eq!(
+//         // Not 200 anymore!
+//         400,
+//         response.status().as_u16(),
+//         "The API did not return a 400 Bad Request when the payload was {}.",
+//         description
+//     );
+// }
