@@ -1,44 +1,45 @@
 //! src/configuration.rs
 
 use crate::domain::SubscriberEmail;
-use secrecy::{ExposeSecret, SecretBox, SecretString};
+use secrecy::{ExposeSecret, SecretString};
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::{ConnectOptions, postgres::PgConnectOptions, postgres::PgSslMode};
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub email_client: EmailClientSettings,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct DatabaseSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub username: String,
-    pub password: SecretBox<String>,
+    pub password: SecretString,
     pub host: String,
     pub database_name: String,
     pub require_ssl: bool,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
-    pub authorization_token: SecretBox<String>,
+    pub authorization_token: SecretString,
     pub timeout_milliseconds: u64,
 }
 
 /// The possible runtime environment for our application.
+#[derive(Clone)]
 pub enum Environment {
     Local,
     Production,
