@@ -1,5 +1,5 @@
 //! src/telemetry.rs
-use tokio::io::Sink;
+// use tokio::io::Sink;
 use tracing::Subscriber;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};

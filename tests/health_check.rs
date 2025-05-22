@@ -1,9 +1,8 @@
 //! tests/health_check.rs
-
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
-use tokio::io::Sink;
+// use tokio::io::Sink;
 use uuid::Uuid;
 use z2p::configurations::{DatabaseSettings, get_configuration};
 use z2p::email_client::EmailClient;
@@ -43,10 +42,12 @@ async fn spawn_app() -> TestApp {
         .email_client
         .sender()
         .expect("Invalid sender email address.");
+    let timeout = config.email_client.timeout();
     let email_client = EmailClient::new(
         config.email_client.base_url,
         sender_email,
         config.email_client.authorization_token,
+        timeout,
     );
     let connection_pool = configure_db(&config.database).await;
     let server = z2p::startup::run(listener, connection_pool.clone(), email_client)
