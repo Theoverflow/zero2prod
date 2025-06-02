@@ -1,7 +1,8 @@
 use crate::startup::HmacSecret;
-use actix_web::{HttpResponse, http::header::ContentType, web};
-use actix_web_flash_messages::IncomingFlashMessages;
+use actix_web::cookie::{Cookie, time::Duration};
+use actix_web::{HttpRequest, HttpResponse, http::header::ContentType, web};
 use hmac::{Hmac, Mac};
+use actix_web_flash_messages::{IncomingFlashMessages, Level};
 use secrecy::ExposeSecret;
 use std::fmt::Write;
 
@@ -26,93 +27,41 @@ impl QueryParams {
     }
 }
 
-pub async fn login_form(
-    query: Option<web::Query<QueryParams>>,
-    secret: web::Data<HmacSecret>,
-) -> HttpResponse {
-    let error_html = match query {
-        None => "".into(),
-        Some(query) => match query.into_inner().verify(&secret) {
-            Ok(err) => {
-                format!("<p><i>{}</i></p>", htmlescape::encode_minimal(&err))
-            }
-            Err(e) => {
-                tracing::warn!(
-                error.message = %e,
-                error.cause_chain = ?e,
-                "Failed to verify query parameters using the HMAC tag"
-                );
-                "".into()
-            }
-        },
-    };
+
+pub async fn login_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
+    let mut error_html = String::new();
+    for m in flash_messages.iter() {
+        writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap();
+    }
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(
             r#"<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta http-equiv="content-type" content="text/html; charset=utf-8">
-<title>Login</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Login</title>
 </head>
 <body>
-{error_html}
-<form action="/login" method="post">
-<label>Username
-<input
-type="text"
-placeholder="Enter Username"
-name="username"
->
-</label>
-<label>Password
-<input
-type="password"
-placeholder="Enter Password"
-name="password"
->
-</label>
-<button type="submit">Login</button>
-</form>
+    {error_html}
+    <form action="/login" method="post">
+        <label>Username
+            <input
+                type="text"
+                placeholder="Enter Username"
+                name="username"
+            >
+        </label>
+        <label>Password
+            <input
+                type="password"
+                placeholder="Enter Password"
+                name="password"
+            >
+        </label>
+        <button type="submit">Login</button>
+    </form>
 </body>
 </html>"#,
         ))
 }
-
-// pub async fn login_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
-//     let mut error_html = String::new();
-//     for m in flash_messages.iter() {
-//         writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap();
-//     }
-//     HttpResponse::Ok()
-//         .content_type(ContentType::html())
-//         .body(format!(
-//             r#"<!DOCTYPE html>
-// <html lang="en">
-// <head>
-//     <meta http-equiv="content-type" content="text/html; charset=utf-8">
-//     <title>Login</title>
-// </head>
-// <body>
-//     {error_html}
-//     <form action="/login" method="post">
-//         <label>Username
-//             <input
-//                 type="text"
-//                 placeholder="Enter Username"
-//                 name="username"
-//             >
-//         </label>
-//         <label>Password
-//             <input
-//                 type="password"
-//                 placeholder="Enter Password"
-//                 name="password"
-//             >
-//         </label>
-//         <button type="submit">Login</button>
-//     </form>
-// </body>
-// </html>"#,
-//         ))
-// }
