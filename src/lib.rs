@@ -1,4 +1,5 @@
 //! src/lib.rs
+pub mod authentication;
 pub mod configurations;
 pub mod domain;
 pub mod email_client;
