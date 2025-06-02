@@ -5,7 +5,7 @@ use crate::startup::ApplicationBaseUrl;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError, web};
 use anyhow::Context;
-use rand::{Rng, distr::Alphanumeric, rng};
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use sqlx::{Executor, PgPool, Postgres, Transaction};
 use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
@@ -136,7 +136,7 @@ pub fn is_valid_name(s: &str) -> bool {
 }
 
 fn generate_subscription_token() -> String {
-    let mut rng = rng();
+    let mut rng = thread_rng();
     std::iter::repeat_with(|| rng.sample(Alphanumeric))
         .map(char::from)
         .take(25)
@@ -149,8 +149,7 @@ fn generate_subscription_token() -> String {
 )]
 pub async fn insert_subscriber(
     transaction: &mut Transaction<'_, Postgres>,
-    new_subscriber: &NewSubscriber
-    ,
+    new_subscriber: &NewSubscriber,
 ) -> Result<Uuid, sqlx::Error> {
     let subscriber_id = Uuid::new_v4();
     let query = sqlx::query!(
@@ -193,7 +192,7 @@ pub async fn send_confirmation_email(
 
     email_client
         .send_email(
-            new_subscriber.email,
+            &new_subscriber.email,
             "Welcome to newsletter",
             &html_body,
             &plain_body,

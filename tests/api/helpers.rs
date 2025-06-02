@@ -1,3 +1,4 @@
+use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version, password_hash::SaltString};
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
@@ -26,11 +27,18 @@ pub struct TestApp {
     pub db_pool: PgPool,
     pub email_server: MockServer,
     pub application_port: u16,
+    pub test_user: TestUser,
 }
 
 pub struct ConfirmationLinks {
     pub html: reqwest::Url,
     pub plain_text: reqwest::Url,
+}
+
+pub struct TestUser {
+    user_id: uuid::Uuid,
+    pub username: String,
+    pub password: String,
 }
 
 impl TestApp {
@@ -39,6 +47,29 @@ impl TestApp {
             .post(&format!("{}/subscriptions", &self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    // pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    //     let (username, password) = self.test_user().await;
+    //     reqwest::Client::new()
+    //         .post(&format!("{}/newsletters", &self.address))
+    //         .basic_auth(username, Some(password))
+    //         .json(&body)
+    //         .send()
+    //         .await
+    //         .expect("Failed to execute request.")
+    // }
+
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        reqwest::Client::new()
+            .post(&format!("{}/login", &self.address))
+            .form(body)
             .send()
             .await
             .expect("Failed to execute request.")
@@ -88,18 +119,22 @@ pub async fn spawn_app() -> TestApp {
     let application = Application::build(configuration.clone())
         .await
         .expect("Failed to build application.");
-    // Get the port before spawning the application
 
+    // Get the port before spawning the application
     let application_port = application.port();
     let address = format!("http://127.0.0.1:{}", application_port);
     let _ = tokio::spawn(application.run_until_stopped());
 
-    TestApp {
+    let test_app = TestApp {
         address,
         db_pool: get_connection_pool(&configuration.database),
         email_server,
         application_port,
-    }
+        test_user: TestUser::generate(),
+    };
+
+    test_app.test_user.store(&test_app.db_pool).await;
+    test_app
 }
 
 async fn configure_db(config: &DatabaseSettings) -> PgPool {
@@ -142,4 +177,58 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .await
         .expect("Failed to migrate the database");
     connection_pool
+}
+
+// async fn add_test_user(pool: &PgPool) {
+//     sqlx::query!(
+//         "INSERT INTO users (user_id, username, password)
+// VALUES ($1, $2, $3)",
+//         uuid::Uuid::new_v4(),
+//         uuid::Uuid::new_v4().to_string(),
+//         uuid::Uuid::new_v4().to_string(),
+//     )
+//     .execute(pool)
+//     .await
+//     .expect("Failed to create test users.");
+// }
+
+impl TestUser {
+    pub fn generate() -> Self {
+        Self {
+            user_id: uuid::Uuid::new_v4(),
+            username: uuid::Uuid::new_v4().to_string(),
+            password: uuid::Uuid::new_v4().to_string(),
+        }
+    }
+
+    pub async fn login(&self, app: &TestApp) {
+        app.post_login(&serde_json::json!({
+            "username": &self.username,
+            "password": &self.password
+        }))
+        .await;
+    }
+
+    async fn store(&self, pool: &PgPool) {
+        let salt = SaltString::generate(&mut rand::thread_rng());
+        // Match production parameters
+        let password_hash = Argon2::new(
+            Algorithm::Argon2id,
+            Version::V0x13,
+            Params::new(15000, 2, 1, None).unwrap(),
+        )
+        .hash_password(self.password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
+        sqlx::query!(
+            "INSERT INTO users (user_id, username, password_hash)
+            VALUES ($1, $2, $3)",
+            self.user_id,
+            self.username,
+            password_hash,
+        )
+        .execute(pool)
+        .await
+        .expect("Failed to store test user.");
+    }
 }
