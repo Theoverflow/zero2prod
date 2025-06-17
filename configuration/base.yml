@@ -19,3 +19,4 @@ email_client:
   # (given that it's a sensitive secret!)
   authorization_token: "my-secret-token"
   timeout_milliseconds: 5000
+redis_uri: "redis://127.0.0.1:6379"

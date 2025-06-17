@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+actix-session = {version="0.10.1", features = ["redis-pool", "redis-session-native-tls"]}
 actix-web = "4.11.0"
 actix-web-flash-messages = {version="0.5.0", features = ["cookies"]}
 anyhow = "1.0.98"
@@ -48,6 +49,14 @@ features = ["tls-native-tls", "runtime-tokio", "macros", "postgres", "uuid", "ch
 version = "0.12.15"
 default-features = false
 features = ["json", "rustls-tls", "cookies"]
+
+# [dependencies.actix-session]
+# # We are using an unreleased version of `actix-session` that provides a more
+# # composable API for session storage backends + TLS/auth support
+# # when using the Redis backend
+# git = "https://github.com/actix/actix-extras"
+# branch = "master"
+# features = ["redis-rs-tls-session"]
 
 [lib]
 # We could use any path here, but we are following the community convention
